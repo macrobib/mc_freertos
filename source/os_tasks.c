@@ -260,7 +260,7 @@ PRIVILEGED_DATA static List_t xPendingReadyList;						/*< Tasks that have been r
 
 /* Other file private variables. --------------------------------*/
 PRIVILEGED_DATA static volatile BaseType_t xUseIdleBudget 			= pdFALSE;
-PRIVILEGED_DATA static volatile BaseType_t xToleranceCount			= (BaseType_t)0;
+PRIVILEGED_DATA static volatile BaseType_t xToleranceCount			= (BaseType_t)5;
 PRIVILEGED_DATA static volatile UBaseType_t uxCurrentNumberOfTasks 	= ( UBaseType_t ) 0U;
 PRIVILEGED_DATA static volatile TickType_t xTickCount 				= ( TickType_t ) 0U;
 PRIVILEGED_DATA static volatile UBaseType_t uxTopReadyPriority 		= tskIDLE_PRIORITY;
@@ -2242,14 +2242,6 @@ void vTaskSwitchContext( void )
 		else
 		{
 			xYieldPending = pdFALSE;
-
-			/*Replenish the budget of the task, set the delay time as the next period and add the
-			 * task to delayed list.**/
-			pxCurrentTCB->pxMCParams->xLastActivation += pxCurrentTCB->pxMCParams->xPeriod;
-			pxCurrentTCB->xNextDeadline += pxCurrentTCB->pxMCParams->xPeriod;
-			pxCurrentTCB->xBudgetRemaining = pxCurrentTCB->pxMCParams->xBudgetLow;
-			/************************************************************************************/
-
 			traceTASK_SWITCHED_OUT();
 
 			#if ( configGENERATE_RUN_TIME_STATS == 1 )
@@ -4508,6 +4500,7 @@ void prvTransitionToLowCrit(void){
 	TCB_t* pTask = NULL;
 	ListItem_t *pxListItem;
 	ListItem_t const *pxListEnd;
+	pxSystemCrit = eLOW;
 	uxListReinitialize(&pxLowCritReadyTasksList);
 	for(index=1; index< configMAX_PRIORITIES; index++){
 		List_t * pxList = ( &pxReadyTasksLists[index] );
@@ -4533,7 +4526,7 @@ void prvTransitionToLowCrit(void){
 
 /*Transitioning to high critical state. Move any active tasks in the runqueue */
 void prvTransitionToHighCrit(void){
-	pxSystemCrit = eLOW;
+	pxSystemCrit = eHIGH;
 	prvManageLowCritTasks();
 	/*Reset budget of any tasks that are present in run queue.*/
 }
@@ -4574,7 +4567,6 @@ void prvCheckAndHandleCriticalityChange(void){
 #endif
 /******************************************************************************************
  ******************************************************************************************/
-
 /*-----------------------------------------------------------*/
 
 

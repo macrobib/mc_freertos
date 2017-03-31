@@ -23,7 +23,7 @@
 #include "het.h"
 #include "gio.h"
 /**Header parameter with task definition for MC tasks.**/
-#include "mc_task_definition.h"
+#include "mc_task_definitions.h"
 
 /* Define Task Handles */
 xTaskHandle canTaskTcb;
@@ -131,9 +131,8 @@ void canTask(void *pvParameters)
 			{
 				i = 0;
 			}
-
-
 		}
+		taskYIELD();
 	}
 }
 
@@ -166,6 +165,7 @@ void absTask(void *pvParameters)
 			}
 
 		}
+		taskYIELD();
 	}
 }
 
@@ -196,8 +196,8 @@ void steerTask(void *pvParameters)
 			{
 				i = 0;
 			}
-
 		}
+		taskYIELD();
 	}
 }
 
@@ -225,8 +225,8 @@ void uartSteerTask(void *pvParameters)
 			{
 				i = 0;
 			}
-
 		}
+		taskYIELD();
     }
 }
 
@@ -254,10 +254,8 @@ void uartAbsTask(void *pvParameters)
 			{
 				i = 0;
 			}
-
 		}
-
-
+		taskYIELD();
     }
 }
 
@@ -273,6 +271,7 @@ void ledTask(void *pvParameters)
 			gioSetPort(hetPORT1, gioGetPort(hetPORT1) ^ 0x00FFF001);
 			for(i = 0; i < 10000; i++);
 			lastTime = xTaskGetTickCount ();
+			taskYIELD();
     }
 }
 
@@ -360,40 +359,40 @@ void main(void)
 		while(1);
 	}
 
-    if (xTaskCreate(canTask,"CAN Task", configMINIMAL_STACK_SIZE, NULL, 1, &canTaskTcb, &task_1) != pdTRUE)
+    if (xTaskCreate(canTask,"CAN Task", configMINIMAL_STACK_SIZE, NULL, 1, &canTaskTcb, &FP_Task_1) != pdTRUE)
     {
         /* Task could not be created */
         while(1);
     }
-    if (xTaskCreate(absTask,"ABS Task", UART_STACK_SIZE, NULL, 1, &absTaskTcb, &task_2) != pdTRUE)
+    if (xTaskCreate(absTask,"ABS Task", UART_STACK_SIZE, NULL, 1, &absTaskTcb, &FP_Task_2) != pdTRUE)
     {
         /* Task could not be created */
         while(1);
     }
-    if (xTaskCreate(steerTask,"STEER Task", configMINIMAL_STACK_SIZE, NULL, 1, &steerTaskTcb, &task_3) != pdTRUE)
-    {
-        /* Task could not be created */
-        while(1);
-    }
-
-    if (xTaskCreate(uartAbsTask,"UART ABS Task", UART_STACK_SIZE, NULL, 1, &uartAbsTaskTcb, &task_4) != pdTRUE)
+    if (xTaskCreate(steerTask,"STEER Task", configMINIMAL_STACK_SIZE, NULL, 1, &steerTaskTcb, &FP_Task_3) != pdTRUE)
     {
         /* Task could not be created */
         while(1);
     }
 
-    if (xTaskCreate(uartSteerTask,"UART Steer Task", UART_STACK_SIZE, NULL, 1, &uartSteerTaskTcb, &task_5) != pdTRUE)
+    if (xTaskCreate(uartAbsTask,"UART ABS Task", UART_STACK_SIZE, NULL, 1, &uartAbsTaskTcb, &FP_Task_4) != pdTRUE)
     {
         /* Task could not be created */
         while(1);
     }
 
-    //I2C Forwarding handling task.
-    if (xTaskCreate(i2cHandlerTask,"I2C Handler Task ", UART_STACK_SIZE, NULL, 1, &i2cHandlerTaskTcb, &task_6) != pdTRUE)
-       {
-           /* Task could not be created */
-           while(1);
-       }
+    if (xTaskCreate(uartSteerTask,"UART Steer Task", UART_STACK_SIZE, NULL, 1, &uartSteerTaskTcb, &FP_Task_5) != pdTRUE)
+    {
+        /* Task could not be created */
+        while(1);
+    }
+
+//    //I2C Forwarding handling task.
+//    if (xTaskCreate(i2cHandlerTask,"I2C Handler Task ", UART_STACK_SIZE, NULL, 1, &i2cHandlerTaskTcb, &FP_Task_6) != pdTRUE)
+//       {
+//           /* Task could not be created */
+//           while(1);
+//       }
 
 #if LED_TASK
     if (xTaskCreate(ledTask,"LED Task", configMINIMAL_STACK_SIZE, NULL, 1, &ledTaskTcb, &task_7) != pdTRUE)

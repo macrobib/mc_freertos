@@ -1356,8 +1356,9 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 
 	return xReturn;
 }
-/*-----------------------------------------------------------*/
 
+
+/*-----------------------------------------------------------*/
 BaseType_t xQueueGenericReceive( QueueHandle_t xQueue, void * const pvBuffer, TickType_t xTicksToWait, const BaseType_t xJustPeeking )
 {
 BaseType_t xEntryTimeSet = pdFALSE;
@@ -1376,7 +1377,6 @@ Queue_t * const pxQueue = ( Queue_t * ) xQueue;
 	/* This function relaxes the coding standard somewhat to allow return
 	statements within the function itself.  This is done in the interest
 	of execution time efficiency. */
-
 	for( ;; )
 	{
 		taskENTER_CRITICAL();
