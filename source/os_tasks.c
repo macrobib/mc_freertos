@@ -192,6 +192,7 @@ typedef struct tskTaskControlBlock
 		MCParam_t* pxMCParams;	/*If MC is enabled in conifguration, Params to support MC Support*/
 		TickType_t xBudgetRemaining;
 		TickType_t xNextDeadline;
+		BaseType_t xTaskCompleted; /*Task signaled yield.*/
 	#endif
 	#if ( configUSE_TASK_NOTIFICATIONS == 1 )
 		volatile uint32_t ulNotifiedValue;
@@ -214,14 +215,16 @@ typedef tskTCB TCB_t;
 
 #if (configSUPPORT_MC == 1)
 /**Utility to initialize MC parameters of the TCB of the task.***/
-static BaseType_t xSystemCrit = eLOW;
-void prvUseIdleBudget(void);
-static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCParam);
-static BaseType_t xGetSystemCrit(void);
-static void prvManageLowCritTasks(void);
-static void prvCheckAndHandleCriticalityChange(void);
-static void prvScheduleLowCritTasks(void);
-static void prvTransitionToLowCrit(void);
+
+void prvUseIdleBudget(void) PRIVILEGED_FUNCTION;
+static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCParam) PRIVILEGED_FUNCTION;
+static BaseType_t prvGetSystemCrit(void) PRIVILEGED_FUNCTION;
+static void prvManageLowCritTasks(void) PRIVILEGED_FUNCTION;
+static void prvCheckAndHandleCriticalityChange(void) PRIVILEGED_FUNCTION;
+static void prvScheduleLowCritTasks(void) PRIVILEGED_FUNCTION;
+static void prvTransitionToLowCrit(void) PRIVILEGED_FUNCTION;
+static void prvTransitionToHighCrit(void) PRIVILEGED_FUNCTION;
+static void prvSetNextRelease(TCB_t* ptask) PRIVILEGED_FUNCTION;
 #endif
 
 /*lint -e956 A manual analysis and inspection has been used to determine which
@@ -1990,7 +1993,14 @@ BaseType_t xSwitchRequired = pdFALSE;
 			{
 				mtCOVERAGE_TEST_MARKER();
 			}
-			prvCheckAndHandleCriticalityChange();
+			if(--pxCurrentTCB->xBudgetRemaining <= 0)
+				prvCheckAndHandleCriticalityChange();
+
+			if(pxCurrentTCB->xNextDeadline <= xTickCount){
+				if(pxCurrentTCB->xBudgetRemaining > 0){
+					/*Caution: Deadline failure, schedule failure.*/
+				}
+			}
 			/* See if this tick has made a timeout expire.  Tasks are stored in
 			the	queue in the order of their wake time - meaning once one task
 			has been found whose block time has not expired there is no need to
@@ -2231,8 +2241,17 @@ BaseType_t xSwitchRequired = pdFALSE;
 #endif /* configUSE_APPLICATION_TASK_TAG */
 /*-----------------------------------------------------------*/
 
+/*Mark current ask to be completed.*/
+void vTaskMarkCompleted(void){
+	pxCurrentTCB->xTaskCompleted = pdTRUE;
+	if (uxListRemove( &( pxCurrentTCB->xGenericListItem )) == ( UBaseType_t ) 0 ){
+		taskRESET_READY_PRIORITY( pxCurrentTCB->uxPriority );
+	}
+}
+
 void vTaskSwitchContext( void )
 {
+	BaseType_t wm;
 	if( uxSchedulerSuspended != ( UBaseType_t ) pdFALSE )
 		{
 			/* The scheduler is currently suspended - do not allow a context
@@ -2242,6 +2261,12 @@ void vTaskSwitchContext( void )
 		else
 		{
 			xYieldPending = pdFALSE;
+			if (pxCurrentTCB->xTaskCompleted == pdTRUE){
+				/*Current task signalled completion replenish budget and move to wait list.*/
+				pxCurrentTCB->xTaskCompleted == pdFALSE;
+				prvSetNextRelease(pxCurrentTCB);
+				prvAddCurrentTaskToDelayedList(pxCurrentTCB->pxMCParams->xLastActivation + pxCurrentTCB->pxMCParams->xPeriod);
+			}
 			traceTASK_SWITCHED_OUT();
 
 			#if ( configGENERATE_RUN_TIME_STATS == 1 )
@@ -2277,6 +2302,7 @@ void vTaskSwitchContext( void )
 
 			/* Select a new task to run using either the generic C or port
 			optimised asm code. */
+			wm = uxTaskGetStackHighWaterMark(pxCurrentTCB);
 			taskSELECT_HIGHEST_PRIORITY_TASK();
 
 			traceTASK_SWITCHED_IN();
@@ -2289,6 +2315,7 @@ void vTaskSwitchContext( void )
 			}
 			#endif /* configUSE_NEWLIB_REENTRANT */
 		}
+	wm = uxTaskGetStackHighWaterMark(pxCurrentTCB);
 }
 /*-----------------------------------------------------------*/
 
@@ -3298,7 +3325,7 @@ TCB_t *pxNewTCB;
 			vPortFreeAligned( pxTCB->pxStack );
 		}
 		#endif
-
+		vPortFree( pxTCB->pxMCParams );
 		vPortFree( pxTCB );
 	}
 
@@ -4359,7 +4386,15 @@ TickType_t uxReturn;
 #if (configSUPPORT_MC == 1)
 /**Utility to initialize MC parameters of the TCB of the task.***/
 static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCData){
-	pxTCB->pxMCParams = pxMCData;
+
+	pxTCB->pxMCParams = (MCParam_t*)pvPortMalloc(sizeof(MCParam_t));
+	pxTCB->pxMCParams->xBudgetHigh = pxMCData->xBudgetHigh;
+	pxTCB->pxMCParams->xBudgetLow  = pxMCData->xBudgetLow;
+	pxTCB->pxMCParams->xDeadline   = pxMCData->xDeadline;
+	pxTCB->pxMCParams->xLastActivation = pxMCData->xLastActivation;
+	pxTCB->pxMCParams->xPeriod  = pxMCData->xPeriod;
+	pxTCB->pxMCParams->xPriority = pxMCData->xPriority;
+
 	UBaseType_t val = 0;
 	val = xTaskGetTickCount() % (pxTCB->pxMCParams->xPeriod);
 	if(pxMCData == NULL){
@@ -4367,11 +4402,11 @@ static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCDa
 		pxTCB->xBudgetRemaining = 0xFFFF; /**Set the values to an arbitrary large value**/
 		pxTCB->xNextDeadline = 0xFFFF;
 	}
-	if(xGetSystemCrit() == eLOW){
+	if(prvGetSystemCrit() == eLOW){
 		pxTCB->xBudgetRemaining = pxTCB->pxMCParams->xBudgetLow;
 		pxTCB->xNextDeadline =  xTaskGetTickCount()- val + pxTCB->pxMCParams->xDeadline;
 	}
-	else if(xGetSystemCrit() == eHIGH){
+	else if(prvGetSystemCrit() == eHIGH){
 		pxTCB->xBudgetRemaining = pxTCB->pxMCParams->xBudgetHigh;
 		pxTCB->xNextDeadline =  xTaskGetTickCount()- val + pxTCB->pxMCParams->xDeadline;
 	}
@@ -4405,8 +4440,8 @@ void uxListReinitialize(List_t* pxList){
 	}
 }
 
-static BaseType_t xGetSystemCrit(void){
-	return xSystemCrit;
+static BaseType_t prvGetSystemCrit(void){
+	return pxSystemCrit;
 }
 
 /*If in high criticality mode, enable scheduling of the tasks in the idle slots available.
@@ -4534,9 +4569,7 @@ void prvTransitionToHighCrit(void){
 /*Main function to check for a budget overrun and handle the criticality change.*/
 void prvCheckAndHandleCriticalityChange(void){
 	/*Check for budget overrun and deadline overrun*/
-	pxCurrentTCB->xBudgetRemaining -= 1;
 	if(pxSystemCrit == eLOW){
-		if(pxCurrentTCB->xBudgetRemaining <= 0){
 			/*Check if task is low crit, for low crit task budget high is set to 0*/
 			if(pxCurrentTCB->pxMCParams->xBudgetHigh == 0){
 				/*Schedule next task.*/
@@ -4555,7 +4588,6 @@ void prvCheckAndHandleCriticalityChange(void){
 					xToleranceCount--;
 				}
 			}
-		}
 	}
 	else{
 		/*Check budget and schedule next task.*/
@@ -4565,6 +4597,12 @@ void prvCheckAndHandleCriticalityChange(void){
 	}
 }
 #endif
+
+void vApplicationStackOverflowHook( TaskHandle_t xTask, char *pcTaskName ){
+	while(1){
+
+	}
+}
 /******************************************************************************************
  ******************************************************************************************/
 /*-----------------------------------------------------------*/

@@ -1910,6 +1910,8 @@ BaseType_t xTaskRemoveFromUnorderedEventList( ListItem_t * pxEventListItem, cons
  */
 void vTaskSwitchContext( void ) PRIVILEGED_FUNCTION;
 
+/*Mark the current task as complted.*/
+void vTaskMarkCompleted(void) PRIVILEGED_FUNCTION;
 /*
  * THESE FUNCTIONS MUST NOT BE USED FROM APPLICATION CODE.  THEY ARE USED BY
  * THE EVENT BITS MODULE.

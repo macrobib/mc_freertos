@@ -59,6 +59,7 @@
         .ref   ulTaskHasFPUContext
         .ref   pxCurrentTCB
         .ref   ulCriticalNesting;
+        .ref   vTaskMarkCompleted;
 
 ;/*-----------------------------------------------------------*/
 ;
@@ -213,6 +214,7 @@ vPortYieldProcessor
         ; First save the context of the current task.
         portSAVE_CONTEXT
 
+		BL		vTaskMarkCompleted
         ; Select the next task to execute. */
         BL      vTaskSwitchContext
 
@@ -234,6 +236,7 @@ vPortYeildWithinAPI
         LDR     R0, [R0]
 
         ; Select the next task to execute. */
+        BL		vTaskMarkCompleted
         BL      vTaskSwitchContext
 
         ; Restore the context of the task selected to execute.
