@@ -318,7 +318,6 @@ void main(void)
 //	i2cSetCount(i2cREG1, bsize);/**To be modified to support dynamic data length.**/
 	/******************************************/
 
-
 	//printf("Time %f us\n", time_PMU_code);
 	//taskDISABLE_INTERRUPTS();
 	//_disable_interrupt_();
@@ -363,29 +362,29 @@ void main(void)
         /* Task could not be created */
         while(1);
     }
-//    if (xTaskCreate(absTask,"ABS Task", UART_STACK_SIZE, NULL, 1, &absTaskTcb, &FP_Task_2) != pdTRUE)
-//    {
-//        /* Task could not be created */
-//        while(1);
-//    }
-//    if (xTaskCreate(steerTask,"STEER Task", configMINIMAL_STACK_SIZE, NULL, 1, &steerTaskTcb, &FP_Task_3) != pdTRUE)
-//    {
-//        /* Task could not be created */
-//        while(1);
-//    }
-//
-//    if (xTaskCreate(uartAbsTask,"UART ABS Task", UART_STACK_SIZE, NULL, 1, &uartAbsTaskTcb, &FP_Task_4) != pdTRUE)
-//    {
-//        /* Task could not be created */
-//        while(1);
-//    }
-//
+    if (xTaskCreate(absTask,"ABS Task", UART_STACK_SIZE, NULL, 1, &absTaskTcb, &FP_Task_2) != pdTRUE)
+    {
+        /* Task could not be created */
+        while(1);
+    }
+    if (xTaskCreate(steerTask,"STEER Task", configMINIMAL_STACK_SIZE, NULL, 1, &steerTaskTcb, &FP_Task_3) != pdTRUE)
+    {
+        /* Task could not be created */
+        while(1);
+    }
+
+    if (xTaskCreate(uartAbsTask,"UART ABS Task", UART_STACK_SIZE, NULL, 1, &uartAbsTaskTcb, &FP_Task_4) != pdTRUE)
+    {
+        /* Task could not be created */
+        while(1);
+    }
+
 //    if (xTaskCreate(uartSteerTask,"UART Steer Task", UART_STACK_SIZE, NULL, 1, &uartSteerTaskTcb, &FP_Task_5) != pdTRUE)
 //    {
 //        /* Task could not be created */
 //        while(1);
 //    }
-
+//
 //    //I2C Forwarding handling task.
 //    if (xTaskCreate(i2cHandlerTask,"I2C Handler Task ", UART_STACK_SIZE, NULL, 1, &i2cHandlerTaskTcb, &FP_Task_6) != pdTRUE)
 //       {

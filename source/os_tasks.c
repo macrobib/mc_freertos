@@ -216,15 +216,15 @@ typedef tskTCB TCB_t;
 #if (configSUPPORT_MC == 1)
 /**Utility to initialize MC parameters of the TCB of the task.***/
 
-void prvUseIdleBudget(void) PRIVILEGED_FUNCTION;
-static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCParam) PRIVILEGED_FUNCTION;
-static BaseType_t prvGetSystemCrit(void) PRIVILEGED_FUNCTION;
-static void prvManageLowCritTasks(void) PRIVILEGED_FUNCTION;
-static void prvCheckAndHandleCriticalityChange(void) PRIVILEGED_FUNCTION;
-static void prvScheduleLowCritTasks(void) PRIVILEGED_FUNCTION;
-static void prvTransitionToLowCrit(void) PRIVILEGED_FUNCTION;
-static void prvTransitionToHighCrit(void) PRIVILEGED_FUNCTION;
-static void prvSetNextRelease(TCB_t* ptask) PRIVILEGED_FUNCTION;
+void prvUseIdleBudget(void) ;
+static void prvInitialiseMCVariables(TCB_t* const pxTCB, const MCParam_t* pxMCParam) ;
+static BaseType_t prvGetSystemCrit(void) ;
+static void prvManageLowCritTasks(void) ;
+static void prvCheckAndHandleCriticalityChange(void) ;
+static void prvScheduleLowCritTasks(void) ;
+static void prvTransitionToLowCrit(void) ;
+static void prvTransitionToHighCrit(void) ;
+static void prvSetNextRelease(TCB_t* ptask) ;
 #endif
 
 /*lint -e956 A manual analysis and inspection has been used to determine which
